@@ -1,0 +1,134 @@
+@page "/Account/Login"
+@attribute [ExcludeFromInteractiveRouting]
+@layout LoginLayout
+
+@using Microsoft.AspNetCore.Identity
+@using Template.BlazorServer.Host.Components.Account.Shared
+@using Template.BlazorServer.Host.Infrastructure.Identity
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager Navigation
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Login</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-16" Style="max-width: 400px;">
+    <MudText Typo="Typo.h5" Class="mb-4">Login</MudText>
+
+    <StatusMessage Message="@errorMessage" />
+
+    <EditForm EditContext="editContext" method="post" OnSubmit="LoginUserAsync" FormName="login">
+        <DataAnnotationsValidator />
+        <div class="login-field">
+            <label for="name">ID</label>
+            <InputText @bind-Value="Input.Name" id="name" maxlength="@Length.Name" autocomplete="username webauthn" />
+            <ValidationMessage For="() => Input.Name" class="mud-error-text" />
+        </div>
+        <div class="login-field">
+            <label for="password">パスワード</label>
+            <InputText type="password" @bind-Value="Input.Password" id="password" maxlength="@Length.Password" autocomplete="current-password" />
+            <ValidationMessage For="() => Input.Password" class="mud-error-text" />
+        </div>
+        <div class="mt-2">
+            <label>
+                <InputCheckbox @bind-Value="Input.RememberMe" />
+                ログイン状態を保持する
+            </label>
+        </div>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-6">
+            ログイン
+        </MudButton>
+        <div class="d-flex flex-column mt-4">
+            <PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" UserNameField="Input.Name" class="mud-button-root mud-button mud-button-text mud-button-text-primary mud-ripple mx-auto">
+                パスキーでログイン
+            </PasskeySubmit>
+        </div>
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.body2">
+            <a href="@(Navigation.GetUriWithQueryParameters("Account/Register", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">新規登録</a>
+        </MudText>
+    </EditForm>
+</MudPaper>
+
+@code {
+    private string? errorMessage;
+
+    private EditContext editContext = default!;
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    public InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        Input ??= new();
+
+        editContext = new EditContext(Input);
+
+        // 途中状態の外部Cookieを破棄してからログインを開始する
+        return HttpMethods.IsGet(HttpContext.Request.Method)
+            ? HttpContext.SignOutAsync(IdentityConstants.ExternalScheme)
+            : Task.CompletedTask;
+    }
+
+    public async Task LoginUserAsync()
+    {
+        if (!String.IsNullOrEmpty(Input.Passkey?.Error))
+        {
+            errorMessage = $"Error: {Input.Passkey.Error}";
+            return;
+        }
+
+        SignInResult result;
+        if (!String.IsNullOrEmpty(Input.Passkey?.CredentialJson))
+        {
+            // パスキーログイン時はフォームバリデーションを行わない
+            result = await SignInManager.PasskeySignInAsync(Input.Passkey.CredentialJson);
+        }
+        else
+        {
+            if (!editContext.Validate())
+            {
+                return;
+            }
+
+            // ログイン失敗をロックアウトに数える場合はlockoutOnFailure: trueにする
+            result = await SignInManager.PasswordSignInAsync(Input.Name, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        }
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User logged in.");
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.IsLockedOut)
+        {
+            errorMessage = "Error: アカウントがロックされています。";
+        }
+        else
+        {
+            errorMessage = "Error: IDまたはパスワードが違います。";
+        }
+    }
+
+    public sealed class InputModel
+    {
+        [Required(ErrorMessage = "IDを入力してください。")]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "パスワードを入力してください。")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+
+        public PasskeyInputModel? Passkey { get; set; }
+    }
+}

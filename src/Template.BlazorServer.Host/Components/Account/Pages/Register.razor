@@ -1,0 +1,96 @@
+@page "/Account/Register"
+@attribute [ExcludeFromInteractiveRouting]
+@layout LoginLayout
+
+@using Microsoft.AspNetCore.Identity
+@using Template.BlazorServer.Host.Components.Account.Shared
+@using Template.BlazorServer.Host.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Register> Logger
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-16" Style="max-width: 400px;">
+    <MudText Typo="Typo.h5" Class="mb-4">新規登録</MudText>
+
+    <StatusMessage Message="@errorMessage" />
+
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUserAsync" FormName="register">
+        <DataAnnotationsValidator />
+        <div class="login-field">
+            <label for="name">ID</label>
+            <InputText @bind-Value="Input.Name" id="name" maxlength="@Length.Name" autocomplete="username" />
+            <ValidationMessage For="() => Input.Name" class="mud-error-text" />
+        </div>
+        <div class="login-field">
+            <label for="password">パスワード</label>
+            <InputText type="password" @bind-Value="Input.Password" id="password" maxlength="@Length.Password" autocomplete="new-password" />
+            <ValidationMessage For="() => Input.Password" class="mud-error-text" />
+        </div>
+        <div class="login-field">
+            <label for="confirm-password">パスワード(確認)</label>
+            <InputText type="password" @bind-Value="Input.ConfirmPassword" id="confirm-password" maxlength="@Length.Password" autocomplete="new-password" />
+            <ValidationMessage For="() => Input.ConfirmPassword" class="mud-error-text" />
+        </div>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-6">
+            登録
+        </MudButton>
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.body2">
+            @* ReSharper disable Html.PathError *@
+            <a href="Account/Login">ログインへ戻る</a>
+            @* ReSharper restore Html.PathError *@
+        </MudText>
+    </EditForm>
+</MudPaper>
+
+@code {
+    private string? errorMessage;
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    public InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized() =>
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        Input ??= new();
+
+    public async Task RegisterUserAsync(EditContext editContext)
+    {
+        var user = new ApplicationUser { UserName = Input.Name };
+        var result = await UserManager.CreateAsync(user, Input.Password);
+        if (!result.Succeeded)
+        {
+            errorMessage = "Error: " + String.Join(" ", result.Errors.Select(static x => x.Description));
+            return;
+        }
+
+        Logger.LogInformation("User created a new account with password.");
+
+        await SignInManager.SignInAsync(user, isPersistent: false);
+        RedirectManager.RedirectTo(ReturnUrl);
+    }
+
+    public sealed class InputModel
+    {
+        [Required(ErrorMessage = "IDを入力してください。")]
+        [MaxLength(Length.Name)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "パスワードを入力してください。")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+
+        [DataType(DataType.Password)]
+        [Compare(nameof(Password), ErrorMessage = "パスワードが一致しません。")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

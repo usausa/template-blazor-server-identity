@@ -1,0 +1,185 @@
+@page "/Account/Manage/Passkeys"
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [Authorize]
+
+@using System.Buffers.Text
+@using Microsoft.AspNetCore.Identity
+@using Template.BlazorServer.Host.Components.Account.Shared
+@using Template.BlazorServer.Host.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>パスキー管理 - Template</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">パスキー管理</MudText>
+
+<StatusMessage />
+
+<MudPaper Class="pa-4" Style="max-width: 640px;">
+    @if (currentPasskeys is { Count: > 0 })
+    {
+        <MudSimpleTable Dense="true" Class="mb-4">
+            <tbody>
+                @foreach (var passkey in currentPasskeys)
+                {
+                    var credentialId = Base64Url.EncodeToString(passkey.CredentialId);
+                    <tr>
+                        <td>@(passkey.Name ?? "名前未設定のパスキー")</td>
+                        <td style="text-align: right;">
+                            <form @formname="@($"update-passkey-{credentialId}")" @onsubmit="UpdatePasskeyAsync" method="post">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="CredentialId" value="@credentialId" />
+                                <MudButton ButtonType="ButtonType.Submit" name="Action" value="rename" Variant="Variant.Text" Color="Color.Primary">名前変更</MudButton>
+                                <MudButton ButtonType="ButtonType.Submit" name="Action" value="delete" Variant="Variant.Text" Color="Color.Error">削除</MudButton>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Class="mb-4">登録済みのパスキーはありません。</MudText>
+    }
+
+    <form @formname="add-passkey" @onsubmit="AddPasskeyAsync" method="post">
+        <AntiforgeryToken />
+        @if (currentPasskeys is { Count: >= MaxPasskeyCount })
+        {
+            <MudAlert Severity="Severity.Warning">登録可能なパスキーの上限に達しています。追加するには既存のパスキーを削除してください。</MudAlert>
+        }
+        else
+        {
+            <PasskeySubmit Operation="PasskeyOperation.Create" Name="Input" class="mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-ripple">
+                パスキーを追加
+            </PasskeySubmit>
+        }
+    </form>
+</MudPaper>
+
+@code {
+    private const int MaxPasskeyCount = 100;
+
+    private ApplicationUser? user;
+
+    private IList<UserPasskeyInfo>? currentPasskeys;
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    public string? Action { get; set; }
+
+    [SupplyParameterFromForm]
+    public string? CredentialId { get; set; }
+
+    [SupplyParameterFromForm(FormName = "add-passkey")]
+    public PasskeyInputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        currentPasskeys = await UserManager.GetPasskeysAsync(user);
+    }
+
+    private async Task AddPasskeyAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        if (!String.IsNullOrEmpty(Input.Error))
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus($"Error: {Input.Error}", HttpContext);
+            return;
+        }
+
+        if (String.IsNullOrEmpty(Input.CredentialJson))
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: ブラウザからパスキーが提供されませんでした。", HttpContext);
+            return;
+        }
+
+        if (currentPasskeys!.Count >= MaxPasskeyCount)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: 登録可能なパスキーの上限に達しています。", HttpContext);
+            return;
+        }
+
+        var attestationResult = await SignInManager.PerformPasskeyAttestationAsync(Input.CredentialJson);
+        if (!attestationResult.Succeeded)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus($"Error: パスキーを追加できませんでした: {attestationResult.Failure.Message}", HttpContext);
+            return;
+        }
+
+        var addPasskeyResult = await UserManager.AddOrUpdatePasskeyAsync(user, attestationResult.Passkey);
+        if (!addPasskeyResult.Succeeded)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーをアカウントへ追加できませんでした。", HttpContext);
+            return;
+        }
+
+        // 続けて名前の入力を促す
+        var credentialIdBase64Url = Base64Url.EncodeToString(attestationResult.Passkey.CredentialId);
+        RedirectManager.RedirectTo($"Account/Manage/RenamePasskey/{credentialIdBase64Url}");
+    }
+
+    private Task UpdatePasskeyAsync()
+    {
+        switch (Action)
+        {
+            case "rename":
+                RedirectManager.RedirectTo($"Account/Manage/RenamePasskey/{CredentialId}");
+                return Task.CompletedTask;
+            case "delete":
+                return DeletePasskeyAsync();
+            default:
+                RedirectManager.RedirectToCurrentPageWithStatus($"Error: 不明な操作 '{Action}' です。", HttpContext);
+                return Task.CompletedTask;
+        }
+    }
+
+    private async Task DeletePasskeyAsync()
+    {
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        byte[] credentialId;
+        try
+        {
+            credentialId = Base64Url.DecodeFromChars(CredentialId);
+        }
+        catch (FormatException)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーIDの形式が不正です。", HttpContext);
+            return;
+        }
+
+        var result = await UserManager.RemovePasskeyAsync(user, credentialId);
+        if (!result.Succeeded)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーを削除できませんでした。", HttpContext);
+            return;
+        }
+
+        RedirectManager.RedirectToCurrentPageWithStatus("パスキーを削除しました。", HttpContext);
+    }
+}

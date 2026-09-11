@@ -1,0 +1,99 @@
+@page "/Account/Manage/RenamePasskey/{Id}"
+@attribute [ExcludeFromInteractiveRouting]
+@attribute [Authorize]
+
+@using System.Buffers.Text
+@using Microsoft.AspNetCore.Identity
+@using Template.BlazorServer.Host.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>パスキー名の設定 - Template</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">パスキー名の設定</MudText>
+
+<MudPaper Class="pa-4" Style="max-width: 640px;">
+    <EditForm Model="Input" OnValidSubmit="RenameAsync" FormName="rename-passkey" method="post">
+        <DataAnnotationsValidator />
+        @if (passkey?.Name is { } name)
+        {
+            <MudText Typo="Typo.body1" Class="mb-4">パスキー「@name」の新しい名前を入力してください。</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Class="mb-4">パスキーの名前を入力してください。</MudText>
+        }
+        <div class="login-field">
+            <label for="passkey-name">パスキー名</label>
+            <InputText @bind-Value="Input.Name" id="passkey-name" />
+            <ValidationMessage For="() => Input.Name" class="mud-error-text" />
+        </div>
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4">保存</MudButton>
+    </EditForm>
+</MudPaper>
+
+@code {
+    private ApplicationUser? user;
+
+    private UserPasskeyInfo? passkey;
+
+    [CascadingParameter]
+    public HttpContext HttpContext { get; set; } = default!;
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    [SupplyParameterFromForm]
+    public InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        Input ??= new();
+
+        user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        byte[] credentialId;
+        try
+        {
+            credentialId = Base64Url.DecodeFromChars(Id);
+        }
+        catch (FormatException)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: パスキーIDの形式が不正です。", HttpContext);
+            return;
+        }
+
+        passkey = await UserManager.GetPasskeyAsync(user, credentialId);
+        if (passkey is null)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: 指定されたパスキーが見つかりません。", HttpContext);
+        }
+    }
+
+    private async Task RenameAsync()
+    {
+        passkey!.Name = Input.Name;
+        var result = await UserManager.AddOrUpdatePasskeyAsync(user!, passkey);
+        if (!result.Succeeded)
+        {
+            RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: パスキーを更新できませんでした。", HttpContext);
+            return;
+        }
+
+        RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "パスキーを更新しました。", HttpContext);
+    }
+
+    public sealed class InputModel
+    {
+        [Required(ErrorMessage = "パスキー名を入力してください。")]
+        [StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+    }
+}
