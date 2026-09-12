@@ -504,7 +504,7 @@ public static class ApplicationExtensions
         builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<FileStorageOptions>>().Value);
         builder.Services.AddSingleton<IStorage, FileStorage>();
 
-        // Service & Usecase
+        // Service
         builder.Services.AddCoreServices();
 
         // Notification
