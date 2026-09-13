@@ -17,7 +17,7 @@
 
 <StatusMessage />
 
-<MudPaper Class="pa-4" Style="max-width: 640px;">
+<MudPaper Class="manage-card pa-4">
     @if (currentPasskeys is { Count: > 0 })
     {
         <MudSimpleTable Dense="true" Class="mb-4">
@@ -27,7 +27,7 @@
                     var credentialId = Base64Url.EncodeToString(passkey.CredentialId);
                     <tr>
                         <td>@(passkey.Name ?? "名前未設定のパスキー")</td>
-                        <td style="text-align: right;">
+                        <td class="text-right">
                             <form @formname="@($"update-passkey-{credentialId}")" @onsubmit="UpdatePasskeyAsync" method="post">
                                 <AntiforgeryToken />
                                 <input type="hidden" name="CredentialId" value="@credentialId" />

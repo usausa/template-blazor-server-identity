@@ -13,7 +13,7 @@
 
 <MudText Typo="Typo.h5" Class="mb-4">パスキー名の設定</MudText>
 
-<MudPaper Class="pa-4" Style="max-width: 640px;">
+<MudPaper Class="manage-card pa-4">
     <EditForm Model="Input" OnValidSubmit="RenameAsync" FormName="rename-passkey" method="post">
         <DataAnnotationsValidator />
         @if (passkey?.Name is { } name)
