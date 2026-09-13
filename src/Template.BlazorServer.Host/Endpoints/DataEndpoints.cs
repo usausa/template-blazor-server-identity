@@ -1,7 +1,6 @@
 namespace Template.BlazorServer.Host.Endpoints;
 
 using Template.BlazorServer.Host.Application;
-using Template.BlazorServer.Host.Mappers;
 using Template.BlazorServer.Host.Models.Data;
 
 public static class DataEndpoints
@@ -64,7 +63,7 @@ public static class DataEndpoints
     {
         var entity = await dataService.QueryAsync(id);
         return entity is not null
-            ? TypedResults.Ok(DataMapper.ToResponse(entity))
+            ? TypedResults.Ok(entity.ToResponse())
             : TypedResults.NotFound();
     }
 
