@@ -93,11 +93,12 @@ public static class ApplicationExtensions
         // Application log
         builder.Logging.ClearProviders();
         builder.Services.AddSerilog(
-            options =>
+            (provider, options) =>
             {
+                var accessor = provider.GetRequiredService<IHttpContextAccessor>();
                 options.ReadFrom.Configuration(builder.Configuration);
-                options.Enrich.With(new CallbackEnricher("RemoteIpAddress", static () => LoggingContext.RemoteIpAddress));
-                options.Enrich.With(new CallbackEnricher("UserId", static () => LoggingContext.UserId));
+                options.Enrich.With(new CallbackEnricher("RemoteIpAddress", () => accessor.HttpContext?.Connection.RemoteIpAddress?.ToString()));
+                options.Enrich.With(new CallbackEnricher("UserId", () => accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier)));
             },
             writeToProviders: useOtlpExporter);
 
@@ -136,7 +137,7 @@ public static class ApplicationExtensions
         return builder;
     }
 
-    public static WebApplication UseLogging(this WebApplication app)
+    public static WebApplication UseW3CLog(this WebApplication app)
     {
         var setting = app.Services.GetRequiredService<LogSetting>();
         if (setting.W3CLog.Enable)
@@ -144,19 +145,18 @@ public static class ApplicationExtensions
             app.UseW3CLogging();
         }
 
+        return app;
+    }
+
+    public static WebApplication UseHttpLog(this WebApplication app)
+    {
+        var setting = app.Services.GetRequiredService<LogSetting>();
         if (setting.HttpLog)
         {
             app.UseWhen(
                 static context => context.Request.Path.StartsWithSegments(ApiPathPrefix, StringComparison.OrdinalIgnoreCase),
                 static b => b.UseHttpLogging());
         }
-
-        return app;
-    }
-
-    public static WebApplication UseLoggingContext(this WebApplication app)
-    {
-        app.UseMiddleware<LoggingContextMiddleware>();
 
         return app;
     }

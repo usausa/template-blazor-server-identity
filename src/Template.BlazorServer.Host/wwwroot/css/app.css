@@ -46,6 +46,11 @@ html, body {
     max-width: 640px;
 }
 
+/* Table column width */
+.w-120 {
+    width: 120px;
+}
+
 .manage-card {
     max-width: 640px;
 }
