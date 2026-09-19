@@ -25,6 +25,8 @@ builder.ConfigureHttp();
 builder.ConfigureApi();
 // Authentication
 builder.ConfigureAuthentication();
+// Compress
+builder.ConfigureCompression();
 // OpenApi
 builder.ConfigureOpenApi();
 
@@ -56,8 +58,11 @@ app.UseW3CLog();
 // Error handler
 app.UseErrorHandler();
 
-// Routing (explicit call to route re-executed error page requests)
+// Routing
 app.UseRouting();
+
+// Compression
+app.UseCompression();
 
 // HTTP log
 app.UseHttpLog();

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -333,6 +334,48 @@ public static class ApplicationExtensions
     }
 
     //--------------------------------------------------------------------------------
+    // Compress
+    //--------------------------------------------------------------------------------
+
+    public static IHostApplicationBuilder ConfigureCompression(this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddResponseCompression(static options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+        });
+
+        builder.Services.AddRequestDecompression();
+
+        return builder;
+    }
+
+    public static WebApplication UseCompression(this WebApplication app)
+    {
+        var setting = app.Services.GetRequiredService<CompressionSetting>();
+        if (setting.Response || setting.Request)
+        {
+            app.UseWhen(
+                static context => context.Request.Path.StartsWithSegments(ApiPathPrefix, StringComparison.OrdinalIgnoreCase),
+                b =>
+                {
+                    if (setting.Response)
+                    {
+                        b.UseResponseCompression();
+                    }
+
+                    if (setting.Request)
+                    {
+                        b.UseRequestDecompression();
+                    }
+                });
+        }
+
+        return app;
+    }
+
+    //--------------------------------------------------------------------------------
     // OpenApi
     //--------------------------------------------------------------------------------
 
@@ -545,6 +588,8 @@ public static class ApplicationExtensions
         builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<ProfilerSetting>>().Value);
         builder.Services.AddOptions<LogSetting>().BindConfiguration("Log").ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<LogSetting>>().Value);
+        builder.Services.AddOptions<CompressionSetting>().BindConfiguration("Compression").ValidateDataAnnotations().ValidateOnStart();
+        builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<CompressionSetting>>().Value);
         builder.Services.AddOptions<AuthSetting>().BindConfiguration("Auth").ValidateDataAnnotations().ValidateOnStart();
         builder.Services.AddSingleton(static p => p.GetRequiredService<IOptions<AuthSetting>>().Value);
         builder.Services.AddOptions<TelemetrySetting>().BindConfiguration("Telemetry").ValidateDataAnnotations().ValidateOnStart();
