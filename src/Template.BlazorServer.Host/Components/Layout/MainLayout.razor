@@ -1,3 +1,4 @@
+@using Template.BlazorServer.Host.Infrastructure.Identity
 @inherits LayoutComponentBase
 
 <MudThemeProvider Theme="Styles.Theme" />
@@ -12,7 +13,7 @@
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
-                <MudText Class="mr-4">@context.User.Identity?.Name</MudText>
+                <MudText Class="mr-4">@(context.User.FindFirst(ApplicationClaimTypes.DisplayName)?.Value ?? context.User.Identity?.Name)</MudText>
                 <MudIconButton Icon="@Icons.Material.Filled.Key" Color="Color.Inherit" Href="Account/Manage/Passkeys" title="パスキー管理" />
                 @* ReSharper disable Html.PathError *@
                 <form method="post" action="Account/Logout">

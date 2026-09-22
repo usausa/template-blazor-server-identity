@@ -178,6 +178,9 @@ namespace Template.BlazorServer.Host.Infrastructure.Identity.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DisplayName")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");

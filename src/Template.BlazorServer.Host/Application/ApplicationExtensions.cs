@@ -291,6 +291,7 @@ public static class ApplicationExtensions
             })
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<IdentityContext>()
+            .AddClaimsPrincipalFactory<ApplicationUserClaimsPrincipalFactory>()
             .AddSignInManager()
             .AddDefaultTokenProviders();
 
@@ -429,6 +430,10 @@ public static class ApplicationExtensions
 
         // Error boundary logging
         builder.Services.AddScoped<Microsoft.AspNetCore.Components.Web.IErrorBoundaryLogger, Infrastructure.Components.ErrorBoundaryLogger>();
+
+        // Circuit tracking
+        builder.Services.AddSingleton<Infrastructure.Circuits.CircuitTracker>();
+        builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, Infrastructure.Circuits.AppCircuitHandler>();
 
         // MudBlazor
         builder.Services.AddMudServices(static options =>

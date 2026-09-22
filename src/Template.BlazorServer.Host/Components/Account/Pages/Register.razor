@@ -26,6 +26,11 @@
             <ValidationMessage For="() => Input.Name" class="mud-error-text" />
         </div>
         <div class="login-field">
+            <label for="display-name">表示名</label>
+            <InputText @bind-Value="Input.DisplayName" id="display-name" maxlength="@Length.Name" autocomplete="nickname" />
+            <ValidationMessage For="() => Input.DisplayName" class="mud-error-text" />
+        </div>
+        <div class="login-field">
             <label for="password">パスワード</label>
             <InputText type="password" @bind-Value="Input.Password" id="password" maxlength="@Length.Password" autocomplete="new-password" />
             <ValidationMessage For="() => Input.Password" class="mud-error-text" />
@@ -65,7 +70,7 @@
 
     public async Task RegisterUserAsync(EditContext editContext)
     {
-        var user = new ApplicationUser { UserName = Input.Name };
+        var user = new ApplicationUser { UserName = Input.Name, DisplayName = String.IsNullOrWhiteSpace(Input.DisplayName) ? null : Input.DisplayName.Trim() };
         var result = await UserManager.CreateAsync(user, Input.Password);
         if (!result.Succeeded)
         {
@@ -84,6 +89,9 @@
         [Required(ErrorMessage = "IDを入力してください。")]
         [MaxLength(Length.Name)]
         public string Name { get; set; } = string.Empty;
+
+        [MaxLength(Length.Name)]
+        public string? DisplayName { get; set; }
 
         [Required(ErrorMessage = "パスワードを入力してください。")]
         [DataType(DataType.Password)]
