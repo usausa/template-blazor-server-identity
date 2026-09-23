@@ -1,10 +1,10 @@
 @page "/Account/Register"
 @attribute [ExcludeFromInteractiveRouting]
-@layout LoginLayout
+@layout PlainLayout
 
 @using Microsoft.AspNetCore.Identity
 @using Template.BlazorServer.Host.Components.Account.Shared
-@using Template.BlazorServer.Host.Infrastructure.Identity
+@using Template.BlazorServer.Host.Application.Identity
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager

@@ -1,13 +1,12 @@
 namespace Template.BlazorServer.Host.Settings;
 
+using Template.BlazorServer.Host.Application.Identity;
+
 public sealed class AuthSetting
 {
     [Range(1, 43200)]
     public int ExpireMinutes { get; set; }
 
     [Required]
-    public string InitialId { get; set; } = default!;
-
-    [Required]
-    public string InitialPassword { get; set; } = default!;
+    public InitialAccountOption InitialAccount { get; set; } = default!;
 }

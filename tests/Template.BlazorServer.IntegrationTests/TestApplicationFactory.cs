@@ -15,7 +15,7 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Default", $"Data Source={databaseFile};Cache=Shared;Pooling=False");
         builder.UseSetting("ConnectionStrings:Identity", $"Data Source={identityDatabaseFile};Cache=Shared;Pooling=False");
         builder.UseSetting("Prometheus:Uri", string.Empty);
-        builder.UseSetting("Worker:Enable", "false");
+        builder.UseSetting("Notification:Enable", "false");
         builder.UseSetting("Profiler:SqlLog:Enable", "false");
         builder.UseSetting("Profiler:SqlTelemetry:Enable", "false");
         builder.UseSetting("Log:HttpLog", "false");

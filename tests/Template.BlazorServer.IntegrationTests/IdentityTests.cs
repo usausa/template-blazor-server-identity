@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 using Template.BlazorServer.Host.Application;
-using Template.BlazorServer.Host.Infrastructure.Identity;
+using Template.BlazorServer.Host.Application.Identity;
 
 public sealed class IdentityTests : IClassFixture<TestApplicationFactory>
 {

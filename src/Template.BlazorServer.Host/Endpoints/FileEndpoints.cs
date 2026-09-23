@@ -1,9 +1,20 @@
 namespace Template.BlazorServer.Host.Endpoints;
 
 using Template.BlazorServer.Host.Application;
-using Template.BlazorServer.Host.Infrastructure.Filters;
-using Template.BlazorServer.Host.Models.File;
 using Template.BlazorServer.Infrastructure.Storage;
+
+//--------------------------------------------------------------------------------
+// Models
+//--------------------------------------------------------------------------------
+
+public sealed class FileListResponse
+{
+    public IReadOnlyList<string> Entries { get; set; } = default!;
+}
+
+//--------------------------------------------------------------------------------
+// Endpoints
+//--------------------------------------------------------------------------------
 
 public static class FileEndpoints
 {
@@ -15,7 +26,17 @@ public static class FileEndpoints
     {
         var group = app.MapApiGroup(ApiRoutes.Files)
             .RequireAuthorization()
-            .AddEndpointFilter<StorageExceptionFilter>();
+            .AddEndpointFilter(static async (context, next) =>
+            {
+                try
+                {
+                    return await next(context);
+                }
+                catch (StorageException)
+                {
+                    return TypedResults.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid path.");
+                }
+            });
 
         group.MapGet("/list/{**path}", HandleListAsync);
         group.MapGet("/download/{**path}", HandleDownloadAsync);
@@ -23,7 +44,7 @@ public static class FileEndpoints
     }
 
     //--------------------------------------------------------------------------------
-    // Handler
+    // List
     //--------------------------------------------------------------------------------
 
     private static async ValueTask<IResult> HandleListAsync(
@@ -39,8 +60,12 @@ public static class FileEndpoints
         }
 
         var entries = await storage.ListAsync(path, cancellationToken);
-        return TypedResults.Ok(new FileListResponse(entries));
+        return TypedResults.Ok(new FileListResponse { Entries = entries });
     }
+
+    //--------------------------------------------------------------------------------
+    // Download
+    //--------------------------------------------------------------------------------
 
     private static async ValueTask<IResult> HandleDownloadAsync(
         IStorage storage,
@@ -55,6 +80,10 @@ public static class FileEndpoints
         var stream = await storage.ReadAsync(path, cancellationToken);
         return TypedResults.Stream(stream, "application/octet-stream", Path.GetFileName(path));
     }
+
+    //--------------------------------------------------------------------------------
+    // Delete
+    //--------------------------------------------------------------------------------
 
     private static async ValueTask<IResult> HandleDeleteAsync(
         IStorage storage,

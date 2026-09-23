@@ -1,11 +1,10 @@
-@using Template.BlazorServer.Host.Infrastructure.Identity
+@using Template.BlazorServer.Host.Application.Identity
 
-@if (!String.IsNullOrEmpty(DisplayMessage))
-{
-    <MudAlert Severity="@(DisplayMessage.StartsWith("Error", StringComparison.Ordinal) ? Severity.Error : Severity.Success)" Class="mb-4">
+<Condition Value="HasMessage">
+    <MudAlert Severity="MessageSeverity" Class="mb-4">
         @DisplayMessage
     </MudAlert>
-}
+</Condition>
 
 @code {
     private string? messageFromCookie;
@@ -17,6 +16,11 @@
     public HttpContext HttpContext { get; set; } = default!;
 
     private string? DisplayMessage => Message ?? messageFromCookie;
+
+    private bool HasMessage => !String.IsNullOrEmpty(DisplayMessage);
+
+    private Severity MessageSeverity =>
+        DisplayMessage!.StartsWith("Error", StringComparison.Ordinal) ? Severity.Error : Severity.Success;
 
     protected override void OnInitialized()
     {

@@ -4,7 +4,7 @@
 
 @using System.Buffers.Text
 @using Microsoft.AspNetCore.Identity
-@using Template.BlazorServer.Host.Infrastructure.Identity
+@using Template.BlazorServer.Host.Application.Identity
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
@@ -16,14 +16,7 @@
 <MudPaper Class="manage-card pa-4">
     <EditForm Model="Input" OnValidSubmit="RenameAsync" FormName="rename-passkey" method="post">
         <DataAnnotationsValidator />
-        @if (passkey?.Name is { } name)
-        {
-            <MudText Typo="Typo.body1" Class="mb-4">パスキー「@name」の新しい名前を入力してください。</MudText>
-        }
-        else
-        {
-            <MudText Typo="Typo.body1" Class="mb-4">パスキーの名前を入力してください。</MudText>
-        }
+        <MudText Typo="Typo.body1" Class="mb-4">@Description</MudText>
         <div class="login-field">
             <label for="passkey-name">パスキー名</label>
             <InputText @bind-Value="Input.Name" id="passkey-name" />
@@ -37,6 +30,9 @@
     private ApplicationUser? user;
 
     private UserPasskeyInfo? passkey;
+
+    private string Description =>
+        passkey?.Name is { } name ? $"パスキー「{name}」の新しい名前を入力してください。" : "パスキーの名前を入力してください。";
 
     [CascadingParameter]
     public HttpContext HttpContext { get; set; } = default!;

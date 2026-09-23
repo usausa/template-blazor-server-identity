@@ -5,7 +5,7 @@
 @using System.Buffers.Text
 @using Microsoft.AspNetCore.Identity
 @using Template.BlazorServer.Host.Components.Account.Shared
-@using Template.BlazorServer.Host.Infrastructure.Identity
+@using Template.BlazorServer.Host.Application.Identity
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
@@ -18,45 +18,45 @@
 <StatusMessage />
 
 <MudPaper Class="manage-card pa-4">
-    @if (currentPasskeys is { Count: > 0 })
-    {
-        <MudSimpleTable Dense="true" Class="mb-4">
-            <tbody>
-                @foreach (var passkey in currentPasskeys)
-                {
-                    var credentialId = Base64Url.EncodeToString(passkey.CredentialId);
-                    <tr>
-                        <td>@(passkey.Name ?? "名前未設定のパスキー")</td>
-                        <td class="text-right">
-                            <form @formname="@($"update-passkey-{credentialId}")" @onsubmit="UpdatePasskeyAsync" method="post">
-                                <AntiforgeryToken />
-                                <input type="hidden" name="CredentialId" value="@credentialId" />
-                                <MudButton ButtonType="ButtonType.Submit" name="Action" value="rename" Variant="Variant.Text" Color="Color.Primary">名前変更</MudButton>
-                                <MudButton ButtonType="ButtonType.Submit" name="Action" value="delete" Variant="Variant.Text" Color="Color.Error">削除</MudButton>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </MudSimpleTable>
-    }
-    else
-    {
-        <MudText Typo="Typo.body2" Class="mb-4">登録済みのパスキーはありません。</MudText>
-    }
+    <Condition Value="HasPasskey">
+        <ChildContent>
+            <MudSimpleTable Dense="true" Class="mb-4">
+                <tbody>
+                    <ListItem Items="PasskeyList" Context="passkey">
+                        <ItemTemplate>
+                            <tr>
+                                <td>@GetDisplayName(passkey)</td>
+                                <td class="text-right">
+                                    <form @formname="@MakeFormName(passkey)" @onsubmit="UpdatePasskeyAsync" method="post">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="CredentialId" value="@GetCredentialId(passkey)" />
+                                        <MudButton ButtonType="ButtonType.Submit" name="Action" value="rename" Variant="Variant.Text" Color="Color.Primary">名前変更</MudButton>
+                                        <MudButton ButtonType="ButtonType.Submit" name="Action" value="delete" Variant="Variant.Text" Color="Color.Error">削除</MudButton>
+                                    </form>
+                                </td>
+                            </tr>
+                        </ItemTemplate>
+                    </ListItem>
+                </tbody>
+            </MudSimpleTable>
+        </ChildContent>
+        <ElseContent>
+            <MudText Typo="Typo.body2" Class="mb-4">登録済みのパスキーはありません。</MudText>
+        </ElseContent>
+    </Condition>
 
     <form @formname="add-passkey" @onsubmit="AddPasskeyAsync" method="post">
         <AntiforgeryToken />
-        @if (currentPasskeys is { Count: >= MaxPasskeyCount })
-        {
-            <MudAlert Severity="Severity.Warning">登録可能なパスキーの上限に達しています。追加するには既存のパスキーを削除してください。</MudAlert>
-        }
-        else
-        {
-            <PasskeySubmit Operation="PasskeyOperation.Create" Name="Input" class="mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-ripple">
-                パスキーを追加
-            </PasskeySubmit>
-        }
+        <Condition Value="IsPasskeyFull">
+            <ChildContent>
+                <MudAlert Severity="Severity.Warning">登録可能なパスキーの上限に達しています。追加するには既存のパスキーを削除してください。</MudAlert>
+            </ChildContent>
+            <ElseContent>
+                <PasskeySubmit Operation="PasskeyOperation.Create" Name="Input" class="mud-button-root mud-button mud-button-filled mud-button-filled-primary mud-ripple">
+                    パスキーを追加
+                </PasskeySubmit>
+            </ElseContent>
+        </Condition>
     </form>
 </MudPaper>
 
@@ -66,6 +66,18 @@
     private ApplicationUser? user;
 
     private IList<UserPasskeyInfo>? currentPasskeys;
+
+    private IReadOnlyList<UserPasskeyInfo> PasskeyList => (IReadOnlyList<UserPasskeyInfo>?)currentPasskeys ?? [];
+
+    private bool HasPasskey => currentPasskeys is { Count: > 0 };
+
+    private bool IsPasskeyFull => currentPasskeys is { Count: >= MaxPasskeyCount };
+
+    private static string GetDisplayName(UserPasskeyInfo passkey) => passkey.Name ?? "名前未設定のパスキー";
+
+    private static string GetCredentialId(UserPasskeyInfo passkey) => Base64Url.EncodeToString(passkey.CredentialId);
+
+    private static string MakeFormName(UserPasskeyInfo passkey) => $"update-passkey-{GetCredentialId(passkey)}";
 
     [CascadingParameter]
     public HttpContext HttpContext { get; set; } = default!;

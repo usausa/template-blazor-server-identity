@@ -3,7 +3,7 @@ namespace Template.BlazorServer.Host.Endpoints;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
 
-using Template.BlazorServer.Host.Infrastructure.Identity;
+using Template.BlazorServer.Host.Application.Identity;
 
 // Identityの静的SSRページ(Components/Account)が使う補助エンドポイント
 public static class AccountEndpoints
