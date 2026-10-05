@@ -26,7 +26,7 @@ public static class FileEndpoints
     {
         var group = app.MapApiGroup(ApiRoutes.Files)
             .RequireAuthorization()
-            .WithMetadata(new ProducesResponseTypeMetadata(StatusCodes.Status401Unauthorized, typeof(void)))
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .AddEndpointFilter(static async (context, next) =>
             {
                 try
@@ -43,17 +43,17 @@ public static class FileEndpoints
         group.MapGet("/list/{**path}", HandleListAsync)
             .WithName("FileList")
             .Produces<FileListResponse>()
-            .Produces(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapGet("/download/{**path}", HandleDownloadAsync)
             .WithName("FileDownload")
             .Produces<Stream>(StatusCodes.Status200OK, "application/octet-stream")
-            .Produces(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound);
         group.MapDelete("/{**path}", HandleDeleteAsync)
             .RequireAuthorization(Policies.Administrator)
             .WithName("FileDelete")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces(StatusCodes.Status403Forbidden)
-            .Produces(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
     //--------------------------------------------------------------------------------
