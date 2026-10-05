@@ -16,9 +16,19 @@ public static class AccountEndpoints
     {
         var group = app.MapGroup("/Account");
 
-        group.MapPost("/Logout", HandleLogoutAsync).RequireAuthorization();
-        group.MapPost("/PasskeyCreationOptions", HandlePasskeyCreationOptionsAsync).RequireAuthorization();
-        group.MapPost("/PasskeyRequestOptions", HandlePasskeyRequestOptionsAsync).AllowAnonymous();
+        group.MapPost("/Logout", HandleLogoutAsync)
+            .RequireAuthorization()
+            .WithName("AccountLogout")
+            .Produces(StatusCodes.Status302Found);
+        group.MapPost("/PasskeyCreationOptions", HandlePasskeyCreationOptionsAsync)
+            .RequireAuthorization()
+            .WithName("AccountPasskeyCreationOptions")
+            .Produces(StatusCodes.Status200OK, contentType: "application/json")
+            .Produces(StatusCodes.Status404NotFound);
+        group.MapPost("/PasskeyRequestOptions", HandlePasskeyRequestOptionsAsync)
+            .AllowAnonymous()
+            .WithName("AccountPasskeyRequestOptions")
+            .Produces(StatusCodes.Status200OK, contentType: "application/json");
     }
 
     //--------------------------------------------------------------------------------
