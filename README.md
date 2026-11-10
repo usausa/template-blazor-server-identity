@@ -1,44 +1,46 @@
 # Template project for Blazor Server (ASP.NET Core Identity)
 
-template-blazor-server をベースに、自前Cookie認証をASP.NET Core Identity(パスキー対応)へ置き換えた変種。
+English | [日本語](README.ja.md)
 
-## ベースとの差分
+A variant based on template-blazor-server that replaces the custom cookie authentication with ASP.NET Core Identity (with passkey support).
 
-- 認証: ASP.NET Core Identity(Cookie)。ストアはIdentity専用のEF Core+SQLite(`identity.db`)。業務データは引き続きSmart.Data.Accessor(EFと併存)
-- パスキー(WebAuthn)対応: ログイン画面のパスキーログイン、`/Account/Manage/Passkeys` での登録・名前変更・削除(.NET 10のIdentityパスキー機能+スキーマVersion3)
-- アカウントUI: `/Account/Login`(パスワード+パスキー)/ `/Account/Register` / `/Account/Manage/Passkeys`(.NET 10 Blazor Identityテンプレートを範にMudBlazorへ移植、静的SSR)
-- ロールはIdentityロールへ移行(Administrator。削除操作の限定は維持)。初期ユーザー(admin/admin、Administrator)はIdentityシードで作成
-- Account系(テーブル/Accessor/Service/PBKDF2)と `/auth/login`・`/auth/logout` は撤去(ログアウトは `/Account/Logout`)
-- 2FA(TOTP)はパスキー優先の方針により未実装(必要ならIdentity標準の2FAを追加可能)
+## Differences from the base
 
-## メモ
+- Authentication: ASP.NET Core Identity (Cookie). The store is EF Core + SQLite dedicated to Identity (`identity.db`). Business data still uses Smart.Data.Accessor (coexisting with EF)
+- Passkey (WebAuthn) support: passkey login on the login screen, and registration, renaming, and deletion at `/Account/Manage/Passkeys` (the Identity passkey feature of .NET 10 + schema Version3)
+- Account UI: `/Account/Login` (password + passkey) / `/Account/Register` / `/Account/Manage/Passkeys` (ported to MudBlazor based on the .NET 10 Blazor Identity template, static SSR)
+- Roles moved to Identity roles (Administrator. Delete operations are still limited to it). The initial user (admin/admin, Administrator) is created by the Identity seed
+- The Account parts (tables/Accessor/Service/PBKDF2) and `/auth/login` and `/auth/logout` were removed (logout is `/Account/Logout`)
+- 2FA (TOTP) is not implemented because of the passkey-first policy (the standard 2FA of Identity can be added if needed)
 
-- パスワードポリシーは開発用初期パスワード(admin)を許容する緩和設定になっている。運用時は `ConfigureAuthentication` の `options.Password` を強化すること
-- IdentityストアはEnsureCreatedで作成している。スキーマ移行が必要になったらEF Coreマイグレーション運用へ切替える
-- パスキーはlocalhost以外ではHTTPSが必要(WebAuthnのRP IDにIPアドレスは使用不可)
-- E2Eテスト(PasskeyTest)はPlaywrightのCDP WebAuthn仮想認証器でパスキーの登録〜ログインを検証している
+## Notes
 
-## E2Eテスト
+- The password policy is relaxed to allow the initial password for development (admin). In operation, strengthen `options.Password` in `ConfigureAuthentication`
+- The Identity store is created with EnsureCreated. When schema migration becomes necessary, switch to EF Core migrations
+- Passkeys require HTTPS except on localhost (an IP address cannot be used as the RP ID of WebAuthn)
+- The E2E test (PasskeyTest) verifies passkey registration through login with the CDP WebAuthn virtual authenticator of Playwright
 
-E2E(`tests/Template.BlazorServer.E2ETests`)はPlaywrightで動かす。日常の実行には含めず、必要なときとリリース前に流す。コマンドはリポジトリ直下のPowerShellで実行する。
+## E2E tests
+
+The E2E tests (`tests/Template.BlazorServer.E2ETests`) run with Playwright. They are not part of the daily runs, and are run when needed and before releases. Run the commands in PowerShell at the repository root.
 
 ```powershell
-# ブラウザの入手(初回。ビルドで出力されるスクリプトを使う)
+# Get the browsers (first time. Uses the script output by the build)
 dotnet build tests/Template.BlazorServer.E2ETests
 pwsh tests/Template.BlazorServer.E2ETests/bin/Debug/net10.0/playwright.ps1 install
 
-# 実行(既定は Chromium・画面なし)
+# Run (Chromium and headless by default)
 dotnet run --project tests/Template.BlazorServer.E2ETests
 
-# 画面を出して実行
+# Run with the browser shown
 $env:HEADED = "1"; dotnet run --project tests/Template.BlazorServer.E2ETests; Remove-Item Env:HEADED
 
-# ブラウザを切り替える(chromium / firefox / webkit)
+# Switch the browser (chromium / firefox / webkit)
 $env:BROWSER = "firefox"; dotnet run --project tests/Template.BlazorServer.E2ETests; Remove-Item Env:BROWSER
 
-# Playwright Inspector で 1 手ずつ実行
+# Run step by step with Playwright Inspector
 $env:PWDEBUG = "1"; dotnet run --project tests/Template.BlazorServer.E2ETests; Remove-Item Env:PWDEBUG
 ```
 
-- 失敗したテストだけ、操作ごとの画面・DOM・通信・コンソールを記録したトレースを `tests/Template.BlazorServer.E2ETests/bin/Debug/net10.0/playwright-traces/<テストの表示名>.zip` に残す。`pwsh tests/Template.BlazorServer.E2ETests/bin/Debug/net10.0/playwright.ps1 show-trace <zip>` か https://trace.playwright.dev で開く
-- パスキーのテスト(`PasskeyTests`)はCDPの仮想認証器を使うので、Chromiumでしか通らない(firefox / webkitでは失敗する)
+- Only for failed tests, a trace that records the screen, DOM, network, and console of each action is saved to `tests/Template.BlazorServer.E2ETests/bin/Debug/net10.0/playwright-traces/<test display name>.zip`. Open it with `pwsh tests/Template.BlazorServer.E2ETests/bin/Debug/net10.0/playwright.ps1 show-trace <zip>` or https://trace.playwright.dev
+- The passkey tests (`PasskeyTests`) use the CDP virtual authenticator, so they pass only on Chromium (they fail on firefox / webkit)
