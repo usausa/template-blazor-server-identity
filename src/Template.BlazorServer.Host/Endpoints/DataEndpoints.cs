@@ -1,5 +1,7 @@
 namespace Template.BlazorServer.Host.Endpoints;
 
+using CsvHelper;
+
 using Smart.Mapper;
 
 using Template.BlazorServer.Host.Application;
@@ -157,8 +159,7 @@ public static class DataEndpoints
         var entities = await dataService.QueryAllAsync(cancellationToken);
 
         using var buffer = new MemoryStream();
-        await using (var writer = new StreamWriter(buffer, new UTF8Encoding(true), leaveOpen: true))
-        await using (var csv = new CsvHelper.CsvWriter(writer, CultureInfo.InvariantCulture))
+        await using (var csv = CsvWriter.Create(buffer))
         {
             await csv.WriteRecordsAsync(entities, cancellationToken);
         }
