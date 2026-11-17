@@ -11,7 +11,7 @@
 | 認証 | ASP.NET Core Identity(Cookie) / Identity ストア(EF Core・SQLite・マイグレーション) / Identity ロール / 独自クレーム(表示名) / セキュリティスタンプ再検証 |
 | パスキー | パスキーログイン(WebAuthn) / パスキー管理(登録・名前変更・削除) |
 | アカウント画面 | ログイン / 新規登録 / パスキー / アクセス拒否(MudBlazor・静的 SSR) |
-| テスト | パスキー E2E(Playwright 仮想認証器) / クレーム結合テスト |
+| テスト | クレーム結合テスト |
 
 # 🔀 ベースとの差分
 
@@ -27,8 +27,6 @@
 - パスワードポリシーは開発用初期パスワード(admin)を許容する緩和設定になっている。運用時は `ConfigureAuthentication` の `options.Password` を強化すること
 - Identity ストアは EF Core のマイグレーション(`Application/Identity/Migrations`)で作成し、起動時に `Database.MigrateAsync()` で適用している。スキーマを変えるときはマイグレーションを追加する
 - パスキーは localhost 以外では HTTPS が必要(WebAuthn の RP ID に IP アドレスは使用不可)
-- E2E テスト(PasskeyTests)は Playwright の CDP WebAuthn 仮想認証器でパスキーの登録〜ログインを検証している
-- パスキーのテスト(`PasskeyTests`)は CDP の仮想認証器を使うので、Chromium でしか通らない(firefox / webkit では失敗する)
 
 # 🔗 関連プロジェクト
 

@@ -11,7 +11,7 @@ English | [日本語](README.ja.md)
 | Auth | ASP.NET Core Identity (Cookie) / Identity store (EF Core, SQLite, migrations) / Identity roles / Custom claims (display name) / Security stamp revalidation |
 | Passkey | Passkey login (WebAuthn) / Passkey management (register, rename, delete) |
 | Account UI | Login / Registration / Passkeys / Access denied (MudBlazor, static SSR) |
-| Test | Passkey E2E (Playwright virtual authenticator) / Claims integration tests |
+| Test | Claims integration tests |
 
 # 🔀 Differences from the base
 
@@ -27,8 +27,6 @@ English | [日本語](README.ja.md)
 - The password policy is relaxed to allow the initial password for development (admin). In operation, strengthen `options.Password` in `ConfigureAuthentication`
 - The Identity store is created with EF Core migrations (`Application/Identity/Migrations`), which are applied at startup with `Database.MigrateAsync()`. When you change the schema, add a migration
 - Passkeys require HTTPS except on localhost (an IP address cannot be used as the RP ID of WebAuthn)
-- The E2E test (PasskeyTests) verifies passkey registration through login with the CDP WebAuthn virtual authenticator of Playwright
-- The passkey tests (`PasskeyTests`) use the CDP virtual authenticator, so they pass only on Chromium (they fail on firefox / webkit)
 
 # 🔗 Related Projects
 

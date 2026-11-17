@@ -94,7 +94,7 @@
         }
         else
         {
-            if (!editContext.Validate())
+            if (!await editContext.ValidateAsync())
             {
                 return;
             }

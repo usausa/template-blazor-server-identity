@@ -30,6 +30,9 @@ internal static partial class Log
     [LoggerMessage(Level = LogLevel.Information, Message = "Circuit closed. id=[{id}], count=[{count}]")]
     public static partial void InfoCircuitClosed(this ILogger logger, string id, int count);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Circuit user update failed. id=[{id}]")]
+    public static partial void ErrorCircuitUserUpdateFailed(this ILogger logger, string id, Exception ex);
+
     // Request
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Long execution. method=[{method}], route=[{route}], elapsed=[{elapsed}]")]
