@@ -9,6 +9,22 @@ public sealed class TestApplicationFactory : WebApplicationFactory<Program>
 
     private readonly string identityDatabaseFile = $"test-identity-{Guid.NewGuid():N}.db";
 
+    public Task<HttpClient> CreateAuthenticatedClientAsync() =>
+        CreateAuthenticatedClientAsync(new WebApplicationFactoryClientOptions());
+
+    public async Task<HttpClient> CreateAuthenticatedClientAsync(WebApplicationFactoryClientOptions options)
+    {
+        var client = CreateClient(options);
+        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["_handler"] = "login",
+            ["Input.Name"] = "admin",
+            ["Input.Password"] = "admin"
+        });
+        await client.PostAsync(new Uri("/Account/Login", UriKind.Relative), form, TestContext.Current.CancellationToken);
+        return client;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("http_ports", string.Empty);

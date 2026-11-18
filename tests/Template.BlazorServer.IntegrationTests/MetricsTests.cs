@@ -1,11 +1,10 @@
 namespace Template.BlazorServer;
 
 using System.Diagnostics.Metrics;
-using System.Text.RegularExpressions;
 
 using Template.BlazorServer.Host.Application.Telemetry;
 
-public sealed partial class MetricsTests : IClassFixture<TestApplicationFactory>
+public sealed class MetricsTests : IClassFixture<TestApplicationFactory>
 {
     private readonly TestApplicationFactory factory;
 
@@ -15,9 +14,6 @@ public sealed partial class MetricsTests : IClassFixture<TestApplicationFactory>
     {
         this.factory = factory;
     }
-
-    [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"")]
-    private static partial Regex AntiforgeryTokenRegex();
 
     [Fact]
     public async Task ApiRequestIsCounted()
@@ -34,17 +30,7 @@ public sealed partial class MetricsTests : IClassFixture<TestApplicationFactory>
         listener.SetMeasurementEventCallback<long>((_, measurement, _, _) => Interlocked.Add(ref count, measurement));
         listener.Start();
 
-        // Cookie認証: IdentityのログインフォームをSSRのフォームとして送る(_handlerはFormName)
-        var client = factory.CreateClient();
-        var loginPage = await client.GetStringAsync(new Uri("/Account/Login", UriKind.Relative), TestContext.Current.CancellationToken);
-        using var form = new FormUrlEncodedContent(new Dictionary<string, string>
-        {
-            ["_handler"] = "login",
-            ["Input.Name"] = "admin",
-            ["Input.Password"] = "admin",
-            ["__RequestVerificationToken"] = AntiforgeryTokenRegex().Match(loginPage).Groups[1].Value
-        });
-        await client.PostAsync(new Uri("/Account/Login", UriKind.Relative), form, TestContext.Current.CancellationToken);
+        var client = await factory.CreateAuthenticatedClientAsync();
 
         // Act
         var response = await client.GetAsync(new Uri("/api/data", UriKind.Relative), TestContext.Current.CancellationToken);

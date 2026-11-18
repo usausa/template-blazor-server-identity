@@ -59,6 +59,9 @@
     [CascadingParameter]
     public HttpContext HttpContext { get; set; } = default!;
 
+    [SupplyParameterFromTempData(Name = IdentityRedirectManager.StatusMessageKey)]
+    public string? IdentityStatusMessage { get; set; }
+
     [SupplyParameterFromForm]
     public InputModel Input { get; set; } = default!;
 
@@ -67,6 +70,9 @@
 
     protected override Task OnInitializedAsync()
     {
+        errorMessage = IdentityStatusMessage;
+        IdentityStatusMessage = null;
+
         // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
         Input ??= new();
 

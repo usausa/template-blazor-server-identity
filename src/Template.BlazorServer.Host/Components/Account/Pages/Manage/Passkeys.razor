@@ -15,7 +15,7 @@
 
 <MudText Typo="Typo.h5" Class="mb-4">パスキー管理</MudText>
 
-<StatusMessage />
+<StatusMessage Message="@message" />
 
 <MudPaper Class="manage-card pa-4">
     <Condition Value="HasPasskey">
@@ -25,10 +25,12 @@
                     <ListItem Items="PasskeyList" Context="passkey">
                         <ItemTemplate>
                             <tr>
-                                <td>@GetDisplayName(passkey)</td>
+                                <td>
+                                    <div>@PasskeyAuthenticators.GetDisplayName(passkey)</div>
+                                    <MudText Typo="Typo.caption">作成 @FormatCreatedAt(passkey) (UTC)</MudText>
+                                </td>
                                 <td class="text-right">
                                     <form @formname="@MakeFormName(passkey)" @onsubmit="UpdatePasskeyAsync" method="post">
-                                        <AntiforgeryToken />
                                         <input type="hidden" name="CredentialId" value="@GetCredentialId(passkey)" />
                                         <MudButton ButtonType="ButtonType.Submit" name="Action" value="rename" Variant="Variant.Text" Color="Color.Primary">名前変更</MudButton>
                                         <MudButton ButtonType="ButtonType.Submit" name="Action" value="delete" Variant="Variant.Text" Color="Color.Error">削除</MudButton>
@@ -46,7 +48,6 @@
     </Condition>
 
     <form @formname="add-passkey" @onsubmit="AddPasskeyAsync" method="post">
-        <AntiforgeryToken />
         <Condition Value="IsPasskeyFull">
             <ChildContent>
                 <MudAlert Severity="Severity.Warning">登録可能なパスキーの上限に達しています。追加するには既存のパスキーを削除してください。</MudAlert>
@@ -63,6 +64,8 @@
 @code {
     private const int MaxPasskeyCount = 100;
 
+    private string? message;
+
     private ApplicationUser? user;
 
     private IList<UserPasskeyInfo>? currentPasskeys;
@@ -73,7 +76,7 @@
 
     private bool IsPasskeyFull => currentPasskeys is { Count: >= MaxPasskeyCount };
 
-    private static string GetDisplayName(UserPasskeyInfo passkey) => passkey.Name ?? "名前未設定のパスキー";
+    private static string FormatCreatedAt(UserPasskeyInfo passkey) => passkey.CreatedAt.UtcDateTime.ToString("yyyy/MM/dd", CultureInfo.InvariantCulture);
 
     private static string GetCredentialId(UserPasskeyInfo passkey) => Base64Url.EncodeToString(passkey.CredentialId);
 
@@ -81,6 +84,9 @@
 
     [CascadingParameter]
     public HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromTempData(Name = IdentityRedirectManager.StatusMessageKey)]
+    public string? IdentityStatusMessage { get; set; }
 
     [SupplyParameterFromForm]
     public string? Action { get; set; }
@@ -93,13 +99,16 @@
 
     protected override async Task OnInitializedAsync()
     {
+        message = IdentityStatusMessage;
+        IdentityStatusMessage = null;
+
         // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
         Input ??= new();
 
         user = await UserManager.GetUserAsync(HttpContext.User);
         if (user is null)
         {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            RedirectToInvalidUser();
             return;
         }
 
@@ -110,39 +119,50 @@
     {
         if (user is null)
         {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            RedirectToInvalidUser();
             return;
         }
 
         if (!String.IsNullOrEmpty(Input.Error))
         {
-            RedirectManager.RedirectToCurrentPageWithStatus($"Error: {Input.Error}", HttpContext);
+            RedirectToCurrentPageWithStatus($"Error: {Input.Error}");
             return;
         }
 
         if (String.IsNullOrEmpty(Input.CredentialJson))
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: ブラウザからパスキーが提供されませんでした。", HttpContext);
+            RedirectToCurrentPageWithStatus("Error: ブラウザからパスキーが提供されませんでした。");
             return;
         }
 
         if (currentPasskeys!.Count >= MaxPasskeyCount)
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: 登録可能なパスキーの上限に達しています。", HttpContext);
+            RedirectToCurrentPageWithStatus("Error: 登録可能なパスキーの上限に達しています。");
             return;
         }
 
         var attestationResult = await SignInManager.PerformPasskeyAttestationAsync(Input.CredentialJson);
         if (!attestationResult.Succeeded)
         {
-            RedirectManager.RedirectToCurrentPageWithStatus($"Error: パスキーを追加できませんでした: {attestationResult.Failure.Message}", HttpContext);
+            RedirectToCurrentPageWithStatus($"Error: パスキーを追加できませんでした: {attestationResult.Failure.Message}");
             return;
+        }
+
+        if (PasskeyAuthenticators.TryGetDefaultDisplayName(attestationResult.Passkey, out var defaultName))
+        {
+            attestationResult.Passkey.Name = defaultName;
         }
 
         var addPasskeyResult = await UserManager.AddOrUpdatePasskeyAsync(user, attestationResult.Passkey);
         if (!addPasskeyResult.Succeeded)
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーをアカウントへ追加できませんでした。", HttpContext);
+            RedirectToCurrentPageWithStatus("Error: パスキーをアカウントへ追加できませんでした。");
+            return;
+        }
+
+        if (!String.IsNullOrEmpty(attestationResult.Passkey.Name))
+        {
+            RedirectToCurrentPageWithStatus("パスキーを追加しました。");
             return;
         }
 
@@ -161,7 +181,7 @@
             case "delete":
                 return DeletePasskeyAsync();
             default:
-                RedirectManager.RedirectToCurrentPageWithStatus($"Error: 不明な操作 '{Action}' です。", HttpContext);
+                RedirectToCurrentPageWithStatus($"Error: 不明な操作 '{Action}' です。");
                 return Task.CompletedTask;
         }
     }
@@ -170,7 +190,7 @@
     {
         if (user is null)
         {
-            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            RedirectToInvalidUser();
             return;
         }
 
@@ -181,17 +201,29 @@
         }
         catch (FormatException)
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーIDの形式が不正です。", HttpContext);
+            RedirectToCurrentPageWithStatus("Error: パスキーIDの形式が不正です。");
             return;
         }
 
         var result = await UserManager.RemovePasskeyAsync(user, credentialId);
         if (!result.Succeeded)
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: パスキーを削除できませんでした。", HttpContext);
+            RedirectToCurrentPageWithStatus("Error: パスキーを削除できませんでした。");
             return;
         }
 
-        RedirectManager.RedirectToCurrentPageWithStatus("パスキーを削除しました。", HttpContext);
+        RedirectToCurrentPageWithStatus("パスキーを削除しました。");
+    }
+
+    private void RedirectToCurrentPageWithStatus(string status)
+    {
+        IdentityStatusMessage = status;
+        RedirectManager.RedirectToCurrentPage();
+    }
+
+    private void RedirectToInvalidUser()
+    {
+        IdentityStatusMessage = $"Error: ユーザー '{UserManager.GetUserId(HttpContext.User)}' を読み込めませんでした。";
+        RedirectManager.RedirectTo("Account/Login");
     }
 }

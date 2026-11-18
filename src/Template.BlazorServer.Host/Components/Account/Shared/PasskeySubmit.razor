@@ -1,24 +1,15 @@
-@using Microsoft.AspNetCore.Antiforgery
 @using Template.BlazorServer.Host.Application.Identity
-@inject IServiceProvider Services
 
-@* パスキー操作を行うフォーム連携ボタン(.NET 10 Blazor Identityテンプレート由来)。
+@* パスキー操作を行うフォーム連携ボタン(.NET 11 Blazor Identityテンプレート由来)。
    実処理は同名の.razor.js(カスタム要素passkey-submit)が担う *@
-<button type="submit" name="__passkeySubmit" @attributes="AdditionalAttributes">@ChildContent</button>
+<button type="submit" name="__passkeySubmit" @attributes="AdditionalAttributes" formnovalidate>@ChildContent</button>
 <passkey-submit
     operation="@Operation"
     name="@Name"
-    email-name="@UserNameField"
-    request-token-name="@tokens?.HeaderName"
-    request-token-value="@tokens?.RequestToken">
+    email-name="@UserNameField">
 </passkey-submit>
 
 @code {
-    private AntiforgeryTokenSet? tokens;
-
-    [CascadingParameter]
-    public HttpContext HttpContext { get; set; } = default!;
-
     [Parameter]
     [EditorRequired]
     public PasskeyOperation Operation { get; set; }
@@ -35,9 +26,4 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IDictionary<string, object>? AdditionalAttributes { get; set; }
-
-    protected override void OnInitialized()
-    {
-        tokens = Services.GetService<IAntiforgery>()?.GetTokens(HttpContext);
-    }
 }

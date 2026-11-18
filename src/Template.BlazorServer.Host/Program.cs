@@ -73,7 +73,6 @@ app.UseHttpLog();
 // Authentication
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseAntiforgery();
 
 // End point
 app.MapEndpoints();

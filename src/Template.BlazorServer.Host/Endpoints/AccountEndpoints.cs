@@ -19,38 +19,51 @@ public static class AccountEndpoints
         group.MapPost("/Logout", HandleLogoutAsync)
             .RequireAuthorization()
             .WithName("AccountLogout")
-            .Produces(StatusCodes.Status302Found);
+            .Produces(StatusCodes.Status302Found)
+            .Produces(StatusCodes.Status400BadRequest);
         group.MapPost("/PasskeyCreationOptions", HandlePasskeyCreationOptionsAsync)
             .RequireAuthorization()
             .WithName("AccountPasskeyCreationOptions")
             .Produces(StatusCodes.Status200OK, contentType: "application/json")
+            .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound);
         group.MapPost("/PasskeyRequestOptions", HandlePasskeyRequestOptionsAsync)
             .AllowAnonymous()
             .WithName("AccountPasskeyRequestOptions")
-            .Produces(StatusCodes.Status200OK, contentType: "application/json");
+            .Produces(StatusCodes.Status200OK, contentType: "application/json")
+            .Produces(StatusCodes.Status400BadRequest);
     }
 
     //--------------------------------------------------------------------------------
     // Handler
     //--------------------------------------------------------------------------------
 
+    [RequireAntiforgeryToken]
     private static async ValueTask<IResult> HandleLogoutAsync(
+        HttpContext context,
         SignInManager<ApplicationUser> signInManager)
     {
+        if (context.Features.Get<IAntiforgeryValidationFeature>() is not { IsValid: true })
+        {
+            return TypedResults.BadRequest();
+        }
+
         await signInManager.SignOutAsync();
 
         return TypedResults.LocalRedirect("~/Account/Login");
     }
 
     // パスキー登録用オプション(WebAuthn creation options)を発行する
+    [RequireAntiforgeryToken]
     private static async ValueTask<IResult> HandlePasskeyCreationOptionsAsync(
         HttpContext context,
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        IAntiforgery antiforgery)
+        SignInManager<ApplicationUser> signInManager)
     {
-        await antiforgery.ValidateRequestAsync(context);
+        if (context.Features.Get<IAntiforgeryValidationFeature>() is not { IsValid: true })
+        {
+            return TypedResults.BadRequest();
+        }
 
         var user = await userManager.GetUserAsync(context.User);
         if (user is null)
@@ -71,14 +84,17 @@ public static class AccountEndpoints
     }
 
     // パスキーログイン用オプション(WebAuthn request options)を発行する
+    [RequireAntiforgeryToken]
     private static async ValueTask<IResult> HandlePasskeyRequestOptionsAsync(
         HttpContext context,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IAntiforgery antiforgery,
         [FromQuery] string? username)
     {
-        await antiforgery.ValidateRequestAsync(context);
+        if (context.Features.Get<IAntiforgeryValidationFeature>() is not { IsValid: true })
+        {
+            return TypedResults.BadRequest();
+        }
 
         var user = String.IsNullOrEmpty(username) ? null : await userManager.FindByNameAsync(username);
         var optionsJson = await signInManager.MakePasskeyRequestOptionsAsync(user);

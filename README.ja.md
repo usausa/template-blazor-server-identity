@@ -17,7 +17,7 @@
 
 - 認証: ASP.NET Core Identity(Cookie)。ストアは Identity 専用の EF Core+SQLite(`identity.db`)。業務データは引き続き Smart.Data.Accessor(EF と併存)
 - パスキー(WebAuthn)対応: ログイン画面のパスキーログイン、`/Account/Manage/Passkeys` での登録・名前変更・削除(.NET 10 の Identity パスキー機能+スキーマ Version3)
-- アカウント UI: `/Account/Login`(パスワード+パスキー)/ `/Account/Register` / `/Account/Manage/Passkeys`(.NET 10 Blazor Identity テンプレートを範に MudBlazor へ移植、静的 SSR)
+- アカウント UI: `/Account/Login`(パスワード+パスキー)/ `/Account/Register` / `/Account/Manage/Passkeys`(.NET 11 Blazor Identity テンプレートを範に MudBlazor へ移植、静的 SSR)
 - ロールは Identity ロールへ移行(Administrator。削除操作の限定は維持)。初期ユーザー(admin/admin、Administrator)は Identity シードで作成
 - Account 系(テーブル/Accessor/Service/PBKDF2)と `/auth/login`・`/auth/logout` は撤去(ログアウトは `/Account/Logout`)
 - 2FA(TOTP)はパスキー優先の方針により未実装(必要なら Identity 標準の 2FA を追加可能)

@@ -1,34 +1,15 @@
-@using Template.BlazorServer.Host.Application.Identity
-
 <Condition Value="HasMessage">
     <MudAlert Severity="MessageSeverity" Class="mb-4">
-        @DisplayMessage
+        @Message
     </MudAlert>
 </Condition>
 
 @code {
-    private string? messageFromCookie;
-
     [Parameter]
     public string? Message { get; set; }
 
-    [CascadingParameter]
-    public HttpContext HttpContext { get; set; } = default!;
-
-    private string? DisplayMessage => Message ?? messageFromCookie;
-
-    private bool HasMessage => !String.IsNullOrEmpty(DisplayMessage);
+    private bool HasMessage => !String.IsNullOrEmpty(Message);
 
     private Severity MessageSeverity =>
-        DisplayMessage!.StartsWith("Error", StringComparison.Ordinal) ? Severity.Error : Severity.Success;
-
-    protected override void OnInitialized()
-    {
-        messageFromCookie = HttpContext.Request.Cookies[IdentityRedirectManager.StatusCookieName];
-
-        if (messageFromCookie is not null)
-        {
-            HttpContext.Response.Cookies.Delete(IdentityRedirectManager.StatusCookieName);
-        }
-    }
+        Message!.StartsWith("Error", StringComparison.Ordinal) ? Severity.Error : Severity.Success;
 }
